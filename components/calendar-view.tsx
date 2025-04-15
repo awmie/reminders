@@ -25,7 +25,9 @@ export function CalendarView() {
   // Set selected date to today on initial load
   useEffect(() => {
     setSelectedDate(todayFormatted)
-  }, [todayFormatted])
+    // Ensure the calendar is showing the current month that contains today's date
+    goToToday()
+  }, [])
 
   // Calculate task data for calendar display
   const getTaskDataForDate = (dateString: string) => {
