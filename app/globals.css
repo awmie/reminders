@@ -24,6 +24,9 @@
     --input: 240 5.9% 90%;
     --ring: 240 5.9% 10%;
     --radius: 0.75rem;
+    
+    /* Add transition for color theme changes */
+    --theme-transition: 0.3s ease-in-out;
   }
 
   .dark {
@@ -50,12 +53,18 @@
 }
 
 @layer base {
+  html {
+    transition: color var(--theme-transition), background-color var(--theme-transition);
+  }
+  
   * {
     @apply border-border;
   }
+  
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    transition: background-color var(--theme-transition), color var(--theme-transition), border-color var(--theme-transition);
   }
 }
 
@@ -79,6 +88,7 @@
   bottom: 0;
   background: radial-gradient(circle at 80% 20%, rgba(255, 200, 190, 0.15), transparent 60%),
     radial-gradient(circle at 20% 80%, rgba(255, 180, 170, 0.1), transparent 40%);
+  transition: background var(--theme-transition);
 }
 
 .dark .glass-bg::before {
@@ -91,6 +101,7 @@
   @apply rounded-2xl border bg-card shadow-sm;
   backdrop-filter: blur(10px);
   background: rgba(255, 255, 255, 0.7);
+  transition: background var(--theme-transition), border-color var(--theme-transition), box-shadow var(--theme-transition);
 }
 
 .dark .ios-card {
@@ -103,6 +114,7 @@
   backdrop-filter: blur(12px);
   background: rgba(255, 255, 255, 0.7);
   border-color: rgba(255, 255, 255, 0.5);
+  transition: background var(--theme-transition), border-color var(--theme-transition), box-shadow var(--theme-transition);
 }
 
 .dark .glass-panel {
@@ -115,8 +127,81 @@
   @apply bg-background/80;
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(230, 230, 230, 0.5);
+  transition: background-color var(--theme-transition), border-color var(--theme-transition);
 }
 
 .dark .glass-header {
   border-bottom: 1px solid rgba(60, 60, 70, 0.5);
+}
+
+/* Date shiny effect */
+.calendar-day {
+  position: relative;
+  overflow: hidden;
+}
+
+.calendar-day::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.calendar-day:hover::before {
+  opacity: 1;
+}
+
+/* Remove the previous ::after effect */
+.calendar-day::after {
+  display: none;
+}
+
+/* Mouse follower glow effect */
+.calendar-day .mouse-glow {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255, 80, 80, 0.12) 0%, rgba(255, 120, 120, 0.05) 30%, rgba(255, 150, 150, 0.02) 60%, transparent 85%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  filter: blur(20px);
+  transition: opacity 0.4s ease;
+}
+
+/* Dark mode - whitish grey glow for regular days */
+.dark .calendar-day .mouse-glow {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(240, 240, 240, 0.04) 30%, rgba(220, 220, 225, 0.02) 60%, transparent 85%);
+  filter: blur(24px);
+}
+
+/* Keep red glow for today's date in both light and dark mode */
+.calendar-day.is-today .mouse-glow {
+  background: radial-gradient(circle, rgba(255, 80, 80, 0.15) 0%, rgba(255, 100, 100, 0.07) 30%, rgba(255, 120, 120, 0.03) 60%, transparent 85%);
+}
+
+/* Keep red glow for selected date in both light and dark mode */
+.calendar-day.is-selected .mouse-glow {
+  background: radial-gradient(circle, rgba(255, 80, 80, 0.15) 0%, rgba(255, 100, 100, 0.07) 30%, rgba(255, 120, 120, 0.03) 60%, transparent 85%);
+}
+
+@keyframes shine {
+  0% {
+    background-position: -100% -100%;
+  }
+  50% {
+    background-position: 150% 150%;
+  }
+  100% {
+    background-position: -100% -100%;
+  }
 }

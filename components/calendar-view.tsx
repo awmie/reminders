@@ -116,14 +116,60 @@ export function CalendarView() {
             setSelectedDate(dateString)
           }}
           className={cn(
-            "group flex items-center justify-center",
+            "group flex items-center justify-center calendar-day",
             isMobile ? "h-10" : "h-24 rounded-2xl border p-1 transition-all hover:shadow-sm",
             !isMobile && isToday
-              ? "border-today bg-today/5 hover:border-today"
+              ? "border-today bg-today/5 hover:border-today is-today"
               : !isMobile && isSelected
-                ? "border-primary bg-primary/5 hover:border-primary"
+                ? "border-primary bg-primary/5 hover:border-primary is-selected"
                 : !isMobile && "border-border hover:border-primary/30",
           )}
+          onMouseMove={(e) => {
+            // Only apply effect on desktop
+            if (isMobile) return;
+            
+            // Get reference to the glow element
+            const element = e.currentTarget;
+            const glowEl = element.querySelector('.mouse-glow') as HTMLDivElement;
+            
+            if (!glowEl) return;
+            
+            // Get the position within the element
+            const rect = element.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Add delay to the movement with increased delay time
+            glowEl.style.transition = 'opacity 0.4s, transform 1.2s cubic-bezier(0.19, 1, 0.22, 1)';
+            glowEl.style.opacity = '1';
+            glowEl.style.left = `${x}px`;
+            glowEl.style.top = `${y}px`;
+          }}
+          onMouseEnter={(e) => {
+            // Only apply effect on desktop
+            if (isMobile) return;
+            
+            const element = e.currentTarget;
+            
+            // Create glow element if it doesn't exist
+            if (!element.querySelector('.mouse-glow')) {
+              const glowEl = document.createElement('div');
+              glowEl.className = 'mouse-glow';
+              element.appendChild(glowEl);
+            }
+            
+            const glowEl = element.querySelector('.mouse-glow') as HTMLDivElement;
+            glowEl.style.opacity = '1';
+          }}
+          onMouseLeave={(e) => {
+            // Only apply effect on desktop
+            if (isMobile) return;
+            
+            const glowEl = e.currentTarget.querySelector('.mouse-glow') as HTMLDivElement;
+            if (glowEl) {
+              glowEl.style.opacity = '0';
+            }
+          }}
         >
           {isMobile ? (
             <div
@@ -141,7 +187,7 @@ export function CalendarView() {
               {day}
             </div>
           ) : (
-            <div className="flex h-full w-full flex-col p-1 sm:p-2">
+            <div className="flex h-full w-full flex-col p-1 sm:p-2 relative z-1">
               <span
                 className={cn(
                   "flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full text-sm font-medium",
@@ -156,7 +202,7 @@ export function CalendarView() {
               </span>
 
               {taskData && (
-                <div className="mt-auto">
+                <div className="mt-auto relative z-1">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className={cn("h-full transition-all", isToday ? "bg-today" : "bg-primary")}
