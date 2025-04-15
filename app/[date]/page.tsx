@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import { TaskList } from "@/components/task-list"
 import { DailySummary } from "@/components/daily-summary"
 import { Button } from "@/components/ui/button"
@@ -9,13 +10,16 @@ import { Input } from "@/components/ui/input"
 import { ChevronLeft, Plus, X } from "lucide-react"
 import { useTasks } from "@/contexts/task-context"
 
-export default function DayPage({ params }: { params: { date: string } }) {
+export default function DayPage() {
+  const params = useParams()
+  const dateString = typeof params.date === 'string' ? params.date : Array.isArray(params.date) ? params.date[0] : ''
+  
   const { addTask } = useTasks()
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [newTaskText, setNewTaskText] = useState("")
 
   // Format the date from URL parameter (e.g., "2023-04-15" to "April 15, 2023")
-  const formattedDate = new Date(params.date).toLocaleDateString("en-US", {
+  const formattedDate = new Date(dateString).toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -23,15 +27,15 @@ export default function DayPage({ params }: { params: { date: string } }) {
   })
 
   // For mobile, create a shorter date format
-  const shortFormattedDate = new Date(params.date).toLocaleDateString("en-US", {
+  const shortFormattedDate = new Date(dateString).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   })
 
-  const handleAddTask = (e) => {
+  const handleAddTask = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (newTaskText.trim()) {
-      addTask(params.date, newTaskText)
+      addTask(dateString, newTaskText)
       setNewTaskText("")
       setShowTaskForm(false)
     }
@@ -98,10 +102,10 @@ export default function DayPage({ params }: { params: { date: string } }) {
             </div>
           )}
           <div className="glass-panel p-4 sm:p-6">
-            <TaskList date={params.date} />
+            <TaskList date={dateString} />
           </div>
           <div className="glass-panel p-4 sm:p-6">
-            <DailySummary date={params.date} />
+            <DailySummary date={dateString} />
           </div>
         </div>
       </main>

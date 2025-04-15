@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,14 +12,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ChevronLeft } from "lucide-react"
 import { useTasks } from "@/contexts/task-context"
 
-export default function NewTaskPage({ params }: { params: { date: string } }) {
+export default function NewTaskPage() {
   const router = useRouter()
+  const params = useParams()
+  const dateString = typeof params.date === 'string' ? params.date : Array.isArray(params.date) ? params.date[0] : ''
+  
   const { addTask } = useTasks()
   const [taskName, setTaskName] = useState("")
   const [taskDescription, setTaskDescription] = useState("")
 
   // Format the date from URL parameter (e.g., "2023-04-15" to "April 15, 2023")
-  const formattedDate = new Date(params.date).toLocaleDateString("en-US", {
+  const formattedDate = new Date(dateString).toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -27,7 +30,7 @@ export default function NewTaskPage({ params }: { params: { date: string } }) {
   })
 
   // For mobile, create a shorter date format
-  const shortFormattedDate = new Date(params.date).toLocaleDateString("en-US", {
+  const shortFormattedDate = new Date(dateString).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   })
@@ -37,10 +40,10 @@ export default function NewTaskPage({ params }: { params: { date: string } }) {
 
     if (taskName.trim() !== "") {
       // Add the new task using our context
-      addTask(params.date, taskName, taskDescription || undefined)
+      addTask(dateString, taskName, taskDescription || undefined)
 
       // Navigate back to the day view
-      router.push(`/${params.date}`)
+      router.push(`/${dateString}`)
     }
   }
 
@@ -48,7 +51,7 @@ export default function NewTaskPage({ params }: { params: { date: string } }) {
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
         <div className="flex h-14 sm:h-16 items-center px-4 sm:px-6">
-          <Link href={`/${params.date}`}>
+          <Link href={`/${dateString}`}>
             <Button variant="ghost" size="icon" className="mr-2 rounded-full h-8 w-8 sm:h-9 sm:w-9">
               <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="sr-only">Back</span>
