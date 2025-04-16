@@ -1,17 +1,19 @@
 "use client"
 
 import { useState, useEffect, useCallback, memo } from "react"
-import { Check, Trash2 } from "lucide-react"
+import { Check, Trash2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useTasks } from "@/contexts/task-context"
 import type { Task } from "@/contexts/task-context"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 
 // Memoize the TaskItem component for better performance
-const TaskItem = memo(({ task, onToggle, onDelete }: { 
+const TaskItem = memo(({ task, onToggle, onDelete, onMoveToNextDay }: { 
   task: Task, 
   onToggle: (id: number) => void,
-  onDelete: (id: number) => void 
+  onDelete: (id: number) => void,
+  onMoveToNextDay: (id: number) => void
 }) => {
   return (
     <li className="group">
@@ -48,15 +50,52 @@ const TaskItem = memo(({ task, onToggle, onDelete }: {
             <p className="mt-0.5 text-xs text-muted-foreground truncate">{task.description}</p>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 sm:h-8 sm:w-8 rounded-full opacity-70 sm:opacity-0 transition-opacity sm:group-hover:opacity-100"
-          onClick={() => onDelete(task.id)}
-        >
-          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
-          <span className="sr-only">Delete task</span>
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-7 w-7 sm:h-8 sm:w-8 rounded-full mr-1",
+                  task.completed 
+                    ? "opacity-50 cursor-not-allowed" 
+                    : "opacity-70 sm:opacity-0 transition-opacity sm:group-hover:opacity-100"
+                )}
+                onClick={() => !task.completed && onMoveToNextDay(task.id)}
+                disabled={task.completed}
+              >
+                <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="sr-only">Move to next day</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {task.completed ? "Completed tasks can't be moved" : "Move to next day"}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-7 w-7 sm:h-8 sm:w-8 rounded-full",
+                  task.completed
+                    ? "opacity-50 cursor-not-allowed"
+                    : "opacity-70 sm:opacity-0 transition-opacity sm:group-hover:opacity-100 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                )}
+                onClick={() => !task.completed && onDelete(task.id)}
+                disabled={task.completed}
+              >
+                <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="sr-only">Delete task</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {task.completed ? "Completed tasks can't be deleted" : "Delete task"}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </li>
   );
@@ -65,7 +104,7 @@ const TaskItem = memo(({ task, onToggle, onDelete }: {
 TaskItem.displayName = 'TaskItem';
 
 export function TaskList({ date, showKeyboardShortcut = false }: { date: string, showKeyboardShortcut?: boolean }) {
-  const { tasks, toggleTask, deleteTask } = useTasks()
+  const { tasks, toggleTask, deleteTask, moveTaskToNextDay } = useTasks()
   const [isLoading, setIsLoading] = useState(true)
   const [dateTasks, setDateTasks] = useState<Task[]>([])
 
@@ -87,12 +126,12 @@ export function TaskList({ date, showKeyboardShortcut = false }: { date: string,
       return () => clearTimeout(timerId);
     };
     
-    const timer = loadTasks();
+    const cancelTimer = loadTasks();
     
     // Cleanup function to prevent state updates on unmounted component
     return () => {
       isMounted = false;
-      clearTimeout(timer);
+      cancelTimer();
     };
   }, [date, tasks])
   
@@ -106,6 +145,12 @@ export function TaskList({ date, showKeyboardShortcut = false }: { date: string,
     // Immediately update local state for better UI responsiveness
     setDateTasks(prevTasks => prevTasks.filter(task => task.id !== taskId))
   }, [deleteTask])
+
+  const handleMoveToNextDay = useCallback((taskId: number) => {
+    moveTaskToNextDay(taskId)
+    // Immediately update local state for better UI responsiveness
+    setDateTasks(prevTasks => prevTasks.filter(task => task.id !== taskId))
+  }, [moveTaskToNextDay])
 
   if (isLoading) {
     return (
@@ -128,6 +173,7 @@ export function TaskList({ date, showKeyboardShortcut = false }: { date: string,
             task={task}
             onToggle={handleToggleTask}
             onDelete={handleDeleteTask}
+            onMoveToNextDay={handleMoveToNextDay}
           />
         ))}
       </ul>

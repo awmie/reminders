@@ -18,6 +18,7 @@ interface TaskContextType {
   toggleTask: (taskId: number) => void
   deleteTask: (taskId: number) => Promise<boolean> // Return promise to confirm deletion success
   getTasksForDate: (date: string) => Task[] // New helper function
+  moveTaskToNextDay: (taskId: number) => Promise<boolean> // New function to move tasks
 }
 
 // Sample initial task data
@@ -169,14 +170,59 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     return tasks[date] || []
   }, [tasks])
 
+  // Move task to the next day - optimized with useCallback and Promise for confirmation
+  const moveTaskToNextDay = useCallback(async (taskId: number): Promise<boolean> => {
+    let success = false;
+    let isCompleted = false;
+
+    setTasks(prevTasks => {
+      const newTasks = { ...prevTasks }
+      let taskToMove: Task | undefined;
+
+      // Find the task to move
+      for (const date in newTasks) {
+        const taskIndex = newTasks[date].findIndex(task => task.id === taskId)
+        if (taskIndex !== -1) {
+          taskToMove = newTasks[date][taskIndex]
+          
+          // Check if task is completed - if so, don't move it
+          if (taskToMove.completed) {
+            isCompleted = true;
+            return prevTasks; // Return unchanged tasks if completed
+          }
+          
+          newTasks[date] = newTasks[date].filter(task => task.id !== taskId)
+          break
+        }
+      }
+
+      if (taskToMove && !isCompleted) {
+        const currentDate = new Date(taskToMove.date)
+        const nextDate = new Date(currentDate)
+        nextDate.setDate(currentDate.getDate() + 1)
+        const nextDateString = nextDate.toISOString().split('T')[0]
+
+        taskToMove.date = nextDateString
+        const nextDateTasks = newTasks[nextDateString] || []
+        newTasks[nextDateString] = [...nextDateTasks, taskToMove]
+        success = true
+      }
+
+      return success ? newTasks : prevTasks
+    })
+
+    return Promise.resolve(!isCompleted && success)
+  }, [])
+
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     tasks,
     addTask,
     toggleTask,
     deleteTask,
-    getTasksForDate
-  }), [tasks, addTask, toggleTask, deleteTask, getTasksForDate])
+    getTasksForDate,
+    moveTaskToNextDay
+  }), [tasks, addTask, toggleTask, deleteTask, getTasksForDate, moveTaskToNextDay])
 
   return <TaskContext.Provider value={contextValue}>{children}</TaskContext.Provider>
 }
