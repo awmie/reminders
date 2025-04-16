@@ -7,8 +7,10 @@ import { TaskList } from "@/components/task-list"
 import { DailySummary } from "@/components/daily-summary"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ChevronLeft, Plus, X } from "lucide-react"
+import { ChevronLeft, Plus, X, Keyboard } from "lucide-react"
 import { useTasks } from "@/contexts/task-context"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts"
 
 export default function DayPage() {
   const params = useParams()
@@ -41,8 +43,14 @@ export default function DayPage() {
     }
   }
 
+  // Local keyboard shortcuts with form control
+  const formControl = { showTaskForm, setShowTaskForm };
+
   return (
     <div className="flex min-h-screen flex-col">
+      {/* Add the KeyboardShortcuts component with form control */}
+      <KeyboardShortcuts formControl={formControl} />
+      
       <header className="sticky top-0 z-10 glass-header">
         <div className="flex h-14 sm:h-16 items-center px-4 sm:px-6">
           <Link href="/">
@@ -56,17 +64,30 @@ export default function DayPage() {
             <span className="sm:hidden">{shortFormattedDate}</span>
           </h1>
           <div className="ml-auto">
-            <Button
-              size="sm"
-              className="rounded-full h-8 text-xs sm:text-sm bg-today hover:bg-today/90"
-              onClick={() => setShowTaskForm(true)}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              Add Task
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="rounded-full h-8 text-xs sm:text-sm bg-today hover:bg-today/90"
+                    onClick={() => setShowTaskForm(true)}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    Add Task
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <div className="flex items-center gap-1 text-xs">
+                    <Keyboard className="h-3 w-3" />
+                    <span>Shortcut: Ctrl+K</span>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </header>
+      
       <main className="flex-1 p-4 sm:p-6">
         <div className="mx-auto max-w-2xl space-y-4 sm:space-y-8">
           {showTaskForm && (
@@ -102,6 +123,13 @@ export default function DayPage() {
             </div>
           )}
           <div className="glass-panel p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-semibold">Tasks</h2>
+              <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md flex items-center gap-1.5">
+                <Keyboard className="h-3 w-3" />
+                <span>Use <kbd className="px-1 py-0.5 rounded bg-background border">Ctrl + K</kbd> to add tasks</span>
+              </div>
+            </div>
             <TaskList date={dateString} />
           </div>
           <div className="glass-panel p-4 sm:p-6">

@@ -4,13 +4,15 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TaskProvider } from "@/contexts/task-context"
+import { TooltipProvider } from "@/components/ui/tooltip"
+// We'll replace the global KeyboardShortcuts with page-specific implementations
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Productivity App",
   description: "A clean, elegant productivity app with calendar and task management",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -23,12 +25,13 @@ export default function RootLayout({
       <body className={inter.className}>
         <div className="glass-bg"></div>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <TaskProvider>{children}</TaskProvider>
+          <TaskProvider>
+            <TooltipProvider>
+              {children}
+            </TooltipProvider>
+          </TaskProvider>
         </ThemeProvider>
       </body>
     </html>
   )
 }
-
-
-import './globals.css'

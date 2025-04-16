@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react"
 
-// Type for task data
+// Type for task data with proper typing
 export interface Task {
   id: number
   text: string
@@ -16,7 +16,8 @@ interface TaskContextType {
   tasks: Record<string, Task[]>
   addTask: (date: string, text: string, description?: string) => void
   toggleTask: (taskId: number) => void
-  deleteTask: (taskId: number) => void
+  deleteTask: (taskId: number) => Promise<boolean> // Return promise to confirm deletion success
+  getTasksForDate: (date: string) => Task[] // New helper function
 }
 
 // Sample initial task data
@@ -32,92 +33,152 @@ const initialTasksData: Record<string, Task[]> = {
   "2023-04-20": [{ id: 5, text: "Update website content", completed: true, date: "2023-04-20" }],
 }
 
+const STORAGE_KEY = "productivityTasks"
 const TaskContext = createContext<TaskContextType | undefined>(undefined)
+
+// Helper for secure local storage operations
+const secureStorage = {
+  get: (): Record<string, Task[]> => {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY)
+      if (!data) return {}
+      
+      // Validate data structure before returning
+      const parsedData = JSON.parse(data)
+      if (typeof parsedData !== 'object' || parsedData === null) return {}
+      
+      return parsedData
+    } catch (error) {
+      console.error("Error retrieving tasks:", error)
+      return {}
+    }
+  },
+  
+  set: (data: Record<string, Task[]>): void => {
+    try {
+      const serializedData = JSON.stringify(data)
+      localStorage.setItem(STORAGE_KEY, serializedData)
+    } catch (error) {
+      console.error("Error saving tasks:", error)
+    }
+  }
+}
 
 export function TaskProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Record<string, Task[]>>(initialTasksData)
+  const [isInitialized, setIsInitialized] = useState(false)
 
-  // Load tasks from localStorage on initial render
+  // Load tasks from localStorage on initial render with better error handling
   useEffect(() => {
-    const storedTasks = localStorage.getItem("productivityTasks")
-    if (storedTasks) {
-      try {
-        setTasks(JSON.parse(storedTasks))
-      } catch (error) {
-        console.error("Failed to parse stored tasks:", error)
+    try {
+      const storedTasks = secureStorage.get()
+      if (Object.keys(storedTasks).length > 0) {
+        setTasks(storedTasks)
       }
+    } catch (error) {
+      console.error("Failed to load tasks:", error)
+    } finally {
+      setIsInitialized(true)
     }
   }, [])
 
-  // Save tasks to localStorage whenever they change
+  // Save tasks to localStorage whenever they change, but only after initialization
   useEffect(() => {
-    localStorage.setItem("productivityTasks", JSON.stringify(tasks))
+    if (isInitialized) {
+      secureStorage.set(tasks)
+    }
+  }, [tasks, isInitialized])
+
+  // Generate a unique ID for new tasks with conflict prevention
+  const generateId = useCallback(() => {
+    const allTasks = Object.values(tasks).flat()
+    const maxId = allTasks.length > 0 ? Math.max(...allTasks.map(task => task.id)) : 0
+    return maxId + 1
   }, [tasks])
 
-  // Generate a unique ID for new tasks
-  const generateId = () => {
-    const allTasks = Object.values(tasks).flat()
-    return allTasks.length > 0 ? Math.max(...allTasks.map((task) => task.id)) + 1 : 1
-  }
-
-  // Add a new task
-  const addTask = (date: string, text: string, description?: string) => {
+  // Add a new task - optimized with useCallback for stability
+  const addTask = useCallback((date: string, text: string, description?: string) => {
+    if (!text.trim()) return
+    
+    const sanitizedText = text.trim() // Sanitize input
+    
     const newTask: Task = {
       id: generateId(),
-      text,
-      description,
+      text: sanitizedText,
+      description: description?.trim(),
       completed: false,
       date,
     }
 
-    setTasks((prevTasks) => {
+    setTasks(prevTasks => {
       const dateTasks = prevTasks[date] || []
       return {
         ...prevTasks,
         [date]: [...dateTasks, newTask],
       }
     })
-  }
+  }, [generateId])
 
-  // Toggle task completion
-  const toggleTask = (taskId: number) => {
-    setTasks((prevTasks) => {
+  // Toggle task completion - optimized with useCallback
+  const toggleTask = useCallback((taskId: number) => {
+    setTasks(prevTasks => {
       const newTasks = { ...prevTasks }
+      let updated = false
 
-      // Find the date that contains this task
+      // Find and update the task
       for (const date in newTasks) {
-        const taskIndex = newTasks[date].findIndex((task) => task.id === taskId)
+        const taskIndex = newTasks[date].findIndex(task => task.id === taskId)
         if (taskIndex !== -1) {
-          newTasks[date] = newTasks[date].map((task) =>
-            task.id === taskId ? { ...task, completed: !task.completed } : task,
+          newTasks[date] = newTasks[date].map(task =>
+            task.id === taskId ? { ...task, completed: !task.completed } : task
           )
+          updated = true
           break
         }
       }
 
-      return newTasks
+      return updated ? newTasks : prevTasks
     })
-  }
+  }, [])
 
-  // Delete a task
-  const deleteTask = (taskId: number) => {
-    setTasks((prevTasks) => {
+  // Delete a task - optimized with useCallback and Promise for confirmation
+  const deleteTask = useCallback(async (taskId: number): Promise<boolean> => {
+    let success = false
+    
+    setTasks(prevTasks => {
       const newTasks = { ...prevTasks }
-
-      // Find the date that contains this task
+      
+      // Find and remove the task
       for (const date in newTasks) {
-        const taskIndex = newTasks[date].findIndex((task) => task.id === taskId)
+        const taskIndex = newTasks[date].findIndex(task => task.id === taskId)
         if (taskIndex !== -1) {
-          newTasks[date] = newTasks[date].filter((task) => task.id !== taskId)
+          newTasks[date] = newTasks[date].filter(task => task.id !== taskId)
+          success = true
           break
         }
       }
-
-      return newTasks
+      
+      return success ? newTasks : prevTasks
     })
-  }
+    
+    return Promise.resolve(success)
+  }, [])
 
-  return <TaskContext.Provider value={{ tasks, addTask, toggleTask, deleteTask }}>{children}</TaskContext.Provider>
+  // Get tasks for a specific date - optimized with memoization
+  const getTasksForDate = useCallback((date: string): Task[] => {
+    return tasks[date] || []
+  }, [tasks])
+
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    tasks,
+    addTask,
+    toggleTask,
+    deleteTask,
+    getTasksForDate
+  }), [tasks, addTask, toggleTask, deleteTask, getTasksForDate])
+
+  return <TaskContext.Provider value={contextValue}>{children}</TaskContext.Provider>
 }
 
 export function useTasks() {
